@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ profile.full_name }} - LoveMatch{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+    <div class="card" style="overflow: hidden;">
+        <!-- Profile Header -->
+        <div style="position: relative; height: 400px; background: linear-gradient(135deg, #667eea, #764ba2); overflow: hidden;">
+            {% if profile.photos.first %}
+                <img src="{{ profile.photos.first.image.url }}" alt="{{ profile.full_name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0, 0, 0, 0.7)); padding: 2rem;">
+            {% else %}
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: white; font-size: 6rem; font-weight: bold;">
+                    {{ profile.user.first_name.0 }}{{ profile.user.last_name.0 }}
+                </div>
+                <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 2rem;">
+            {% endif %}
+                <div style="color: white;">
+                    <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">{{ profile.full_name }}</h1>
+                    <p style="font-size: 1.2rem; opacity: 0.9; margin-bottom: 1rem;">{{ profile.age }} years old</p>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        {% if profile.location %}
+                        <span style="background: rgba(255, 255, 255, 0.2); padding: 0.5rem 1rem; border-radius: 20px; backdrop-filter: blur(10px);">
+                            <i class="fas fa-map-marker-alt"></i> {{ profile.location }}
+                        </span>
+                        {% endif %}
+                        {% if profile.is_verified %}
+                        <span style="background: rgba(34, 197, 94, 0.3); padding: 0.5rem 1rem; border-radius: 20px; backdrop-filter: blur(10px);">
+                            <i class="fas fa-check-circle"></i> Verified
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Content -->
+        <div style="padding: 2rem;">
+            <!-- Bio -->
+            {% if profile.bio %}
+            <div style="margin-bottom: 2rem;">
+                <h3 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; color: #333;">About {{ profile.user.first_name }}</h3>
+                <p style="color: #555; line-height: 1.7; font-size: 1.1rem;">{{ profile.bio }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Details Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+                {% if profile.occupation %}
+                <div style="background: rgba(102, 126, 234, 0.05); padding: 1.5rem; border-radius: 15px; border-left: 4px solid #667eea;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-briefcase" style="color: #667eea; font-size: 1.5rem;"></i>
+                        <div>
+                            <h4 style="font-weight: 600; margin-bottom: 0.3rem;">Occupation</h4>
+                            <p style="color: #666;">{{ profile.occupation }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if profile.education %}
+                <div style="background: rgba(102, 126, 234, 0.05); padding: 1.5rem; border-radius: 15px; border-left: 4px solid #667eea;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-graduation-cap" style="color: #667eea; font-size: 1.5rem;"></i>
+                        <div>
+                            <h4 style="font-weight: 600; margin-bottom: 0.3rem;">Education</h4>
+                            <p style="color: #666;">{{ profile.get_education_display }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if profile.height %}
+                <div style="background: rgba(102, 126, 234, 0.05); padding: 1.5rem; border-radius: 15px; border-left: 4px solid #667eea;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-ruler-vertical" style="color: #667eea; font-size: 1.5rem;"></i>
+                        <div>
+                            <h4 style="font-weight: 600; margin-bottom: 0.3rem;">Height</h4>
+                            <p style="color: #666;">{{ profile.height }} cm</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if profile.looking_for %}
+                <div style="background: rgba(102, 126, 234, 0.05); padding: 1.5rem; border-radius: 15px; border-left: 4px solid #667eea;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-heart" style="color: #667eea; font-size: 1.5rem;"></i>
+                        <div>
+                            <h4 style="font-weight: 600; margin-bottom: 0.3rem;">Looking For</h4>
+                            <p style="color: #666;">{{ profile.get_looking_for_display }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Interests -->
+            {% if profile.interests.all %}
+            <div style="margin-bottom: 2rem;">
+                <h3 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; color: #333;">Interests</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.8rem;">
+                    {% for interest in profile.interests.all %}
+                        <span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.2rem; border-radius: 25px; font-weight: 500; font-size: 0.9rem;">{{ interest.interest.name }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Photo Gallery -->
+            {% if profile.photos.all|length > 1 %}
+            <div style="margin-bottom: 2rem;">
+                <h3 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; color: #333;">More Photos</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                    {% for photo in profile.photos.all|slice:"1:" %}
+                        <img src="{{ photo.image.url }}" alt="Photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 10px; cursor: pointer;" onclick="openModal('{{ photo.image.url }}')">
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 3rem;">
+                {% if not has_swiped %}
+                    <button onclick="passUser({{ profile.user.id }})" class="btn btn-secondary" style="padding: 1rem 2rem;">
+                        <i class="fas fa-times"></i> Pass
+                    </button>
+                    <button onclick="likeUser({{ profile.user.id }})" class="btn btn-primary" style="padding: 1rem 2rem;">
+                        <i class="fas fa-heart"></i> Like
+                    </button>
+                {% else %}
+                    <div style="text-align: center; padding: 1rem; background: rgba(102, 126, 234, 0.1); border-radius: 15px; color: #667eea; font-weight: 600;">
+                        <i class="fas fa-check-circle"></i> You've already swiped on this person
+                    </div>
+                {% endif %}
+                
+                <button onclick="showReportModal()" class="btn" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; padding: 1rem 2rem; border: 2px solid rgba(239, 68, 68, 0.2);">
+                    <i class="fas fa-flag"></i> Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Photo Modal -->
+<div id="photoModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 1000; justify-content: center; align-items: center;" onclick="closeModal()">
+    <img id="modalImage" style="max-width: 90%; max-height: 90%; border-radius: 10px;">
+    <button onclick="closeModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: white; font-size: 2rem; cursor: pointer;">&times;</button>
+</div>
+
+<!-- Report Modal -->
+<div id="reportModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div class="card" style="max-width: 400px; width: 90%;">
+        <h3 style="margin-bottom: 1rem;">Report User</h3>
+        <p style="color: #666; margin-bottom: 1.5rem;">Why are you reporting this user?</p>
+        <form id="reportForm">
+            {% csrf_token %}
+            <select name="reason" style="width: 100%; padding: 0.8rem; margin-bottom: 1rem; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px;">
+                <option value="">Select a reason...</option>
+                <option value="fake">Fake Profile</option>
+                <option value="inappropriate">Inappropriate Content</option>
+                <option value="harassment">Harassment</option>
+                <option value="spam">Spam</option>
+                <option value="other">Other</option>
+            </select>
+            <textarea name="description" placeholder="Additional details (optional)" style="width: 100%; padding: 0.8rem; margin-bottom: 1.5rem; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 8px; resize: vertical; min-height: 80px;"></textarea>
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="closeReportModal()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                <button type="submit" class="btn" style="flex: 1; background: #dc2626; color: white;">Submit Report</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Photo modal functions
+function openModal(imageSrc) {
+    document.getElementById('modalImage').src = imageSrc;
+    document.getElementById('photoModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('photoModal').style.display = 'none';
+}
+
+// Report modal functions
+function showReportModal() {
+    document.getElementById('reportModal').style.display = 'flex';
+}
+
+function closeReportModal() {
+    document.getElementById('reportModal').style.display = 'none';
+}
+
+// Action functions
+function likeUser(userId) {
+    fetch(`/matching/like/${userId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'match') {
+            alert('🎉 It\'s a match! You can now start chatting!');
+            window.location.href = '/matching/matches/';
+        } else {
+            alert('❤️ Liked! If they like you back, you\'ll get a match!');
+            window.location.href = '/profiles/discover/';
+        }
+    });
+}
+
+function passUser(userId) {
+    fetch(`/matching/pass/${userId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        window.location.href = '/profiles/discover/';
+    });
+}
+
+// Report form submission
+document.getElementById('reportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`/profiles/report/{{ profile.user.id }}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+    })
+    .then(response => {
+        if (response.ok) {
+            alert('Report submitted successfully. Thank you for helping keep our community safe.');
+            closeReportModal();
+        } else {
+            alert('Error submitting report. Please try again.');
+        }
+    });
+});
+</script>
+
+{% csrf_token %}
+{% endblock %}

@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block title %}Discover - LoveMatch{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto;">
+    <div style="text-align: center; margin-bottom: 3rem;">
+        <h1 style="font-size: 3rem; font-weight: 900; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">Discover Amazing People</h1>
+        <p style="color: #666; font-size: 1.2rem;">Find your perfect match from incredible people near you</p>
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem;">
+        <a href="{% url 'matching:preferences' %}" class="btn btn-secondary">
+            <i class="fas fa-sliders-h"></i> Preferences
+        </a>
+        <a href="{% url 'matching:swipe' %}" class="btn btn-primary">
+            <i class="fas fa-heart"></i> Quick Match
+        </a>
+    </div>
+
+    {% if profiles %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem;">
+        {% for profile in profiles %}
+        <div class="card profile-card" style="overflow: hidden; position: relative; background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));">
+            <div style="position: relative;">
+                {% if profile.photos.first %}
+                    <img src="{{ profile.photos.first.image.url }}" alt="{{ profile.full_name }}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 15px 15px 0 0;">
+                {% else %}
+                    <div style="width: 100%; height: 300px; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem; font-weight: bold; border-radius: 15px 15px 0 0;">
+                        {{ profile.user.first_name.0 }}{{ profile.user.last_name.0 }}
+                    </div>
+                {% endif %}
+                
+                <div style="position: absolute; top: 15px; right: 15px; background: rgba(255, 255, 255, 0.9); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+                    <i class="fas fa-heart" style="color: #ff6b6b; font-size: 1.2rem;"></i>
+                </div>
+            </div>
+            
+            <div style="padding: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">{{ profile.full_name }}</h3>
+                        <p style="color: #667eea; font-weight: 600; margin-bottom: 0.5rem;">{{ profile.age }} years old</p>
+                        <p style="color: #666; font-size: 0.9rem;"><i class="fas fa-map-marker-alt"></i> {{ profile.location|default:"Location not set" }}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        {% if profile.is_verified %}
+                            <span style="background: rgba(34, 197, 94, 0.1); color: #16a34a; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">
+                                <i class="fas fa-check-circle"></i> Verified
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if profile.bio %}
+                <p style="color: #555; line-height: 1.6; margin-bottom: 1.5rem;">{{ profile.bio|truncatewords:20 }}</p>
+                {% endif %}
+
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;">
+                        {% if profile.occupation %}
+                        <div>
+                            <i class="fas fa-briefcase" style="color: #667eea; margin-right: 0.5rem;"></i>
+                            <span style="color: #666;">{{ profile.occupation }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if profile.education %}
+                        <div>
+                            <i class="fas fa-graduation-cap" style="color: #667eea; margin-right: 0.5rem;"></i>
+                            <span style="color: #666;">{{ profile.get_education_display }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if profile.interests.all %}
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        {% for interest in profile.interests.all|slice:":3" %}
+                            <span style="background: rgba(102, 126, 234, 0.1); color: #667eea; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 500;">{{ interest.interest.name }}</span>
+                        {% endfor %}
+                        {% if profile.interests.all|length > 3 %}
+                            <span style="background: rgba(102, 126, 234, 0.1); color: #667eea; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 500;">+{{ profile.interests.all|length|add:"-3" }} more</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div style="display: flex; gap: 1rem;">
+                    <a href="{% url 'profiles:profile_detail' profile.user.id %}" class="btn btn-secondary" style="flex: 1; text-align: center;">
+                        <i class="fas fa-eye"></i> View Profile
+                    </a>
+                    <button onclick="likeUser({{ profile.user.id }})" class="btn btn-primary" style="flex: 1;">
+                        <i class="fas fa-heart"></i> Like
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div style="text-align: center; margin-top: 3rem;">
+        <div class="pagination" style="display: inline-flex; gap: 0.5rem;">
+            {% if page_obj.has_previous %}
+                <a href="?page=1" class="btn btn-secondary">&laquo; First</a>
+                <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-secondary">Previous</a>
+            {% endif %}
+            
+            <span class="btn" style="background: rgba(102, 126, 234, 0.1); color: #667eea;">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="btn btn-secondary">Next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}" class="btn btn-secondary">Last &raquo;</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="text-align: center; margin: 4rem 0;">
+        <div class="card" style="max-width: 500px; margin: 0 auto;">
+            <i class="fas fa-search" style="font-size: 4rem; color: #667eea; margin-bottom: 1rem; opacity: 0.7;"></i>
+            <h2 style="font-size: 1.8rem; margin-bottom: 1rem;">No profiles found</h2>
+            <p style="color: #666; margin-bottom: 2rem;">We couldn't find anyone matching your preferences. Try adjusting your search criteria.</p>
+            <a href="{% url 'matching:preferences' %}" class="btn btn-primary">
+                <i class="fas fa-sliders-h"></i> Update Preferences
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .profile-card {
+        transition: all 0.3s ease;
+    }
+    
+    .profile-card:hover {
+        transform: translateY(-10px) scale(1.02);
+    }
+</style>
+
+<script>
+function likeUser(userId) {
+    fetch(`/matching/like/${userId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'match') {
+            alert('🎉 It\'s a match! You can now start chatting!');
+        } else {
+            alert('❤️ Liked! If they like you back, you\'ll get a match!');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Something went wrong. Please try again.');
+    });
+}
+
+// Add CSRF token for AJAX requests
+const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+if (!csrfToken) {
+    const meta = document.createElement('meta');
+    meta.name = 'csrf-token';
+    meta.content = '{{ csrf_token }}';
+    document.getElementsByTagName('head')[0].appendChild(meta);
+}
+</script>
+
+<!-- Add CSRF token -->
+{% csrf_token %}
+
+{% block extra_js %}
+<script>
+    // Staggered animation for profile cards
+    gsap.from(".profile-card", {
+        duration: 0.8,
+        y: 50,
+        opacity: 0,
+        stagger: 0.15,
+        ease: "power2.out"
+    });
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - LoveMatch{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 90vh; padding: 2rem 0;">
+    <div class="card" style="max-width: 500px; width: 100%;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <h1 style="font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">Join LoveMatch</h1>
+            <p style="color: #666; font-weight: 500;">Create your account and start your love journey</p>
+        </div>
+
+        <form method="post" style="space-y: 1.5rem;">
+            {% csrf_token %}
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <label for="{{ form.first_name.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">First Name</label>
+                    <input type="text" name="{{ form.first_name.name }}" id="{{ form.first_name.id_for_label }}" 
+                           style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; background: rgba(255, 255, 255, 0.8); font-size: 16px; transition: all 0.3s ease;" 
+                           placeholder="First name" required>
+                </div>
+                <div>
+                    <label for="{{ form.last_name.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Last Name</label>
+                    <input type="text" name="{{ form.last_name.name }}" id="{{ form.last_name.id_for_label }}" 
+                           style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; background: rgba(255, 255, 255, 0.8); font-size: 16px; transition: all 0.3s ease;" 
+                           placeholder="Last name" required>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label for="{{ form.username.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Username</label>
+                <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}" 
+                       style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; background: rgba(255, 255, 255, 0.8); font-size: 16px; transition: all 0.3s ease;" 
+                       placeholder="Choose a unique username" required>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label for="{{ form.email.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Email</label>
+                <input type="email" name="{{ form.email.name }}" id="{{ form.email.id_for_label }}" 
+                       style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; background: rgba(255, 255, 255, 0.8); font-size: 16px; transition: all 0.3s ease;" 
+                       placeholder="your@email.com" required>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label for="{{ form.date_of_birth.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Date of Birth</label>
+                <input type="date" name="{{ form.date_of_birth.name }}" id="{{ form.date_of_birth.id_for_label }}" 
+                       style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; background: rgba(255, 255, 255, 0.8); font-size: 16px; transition: all 0.3s ease;" 
+                       required>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+                <div>
+                    <label for="{{ form.password1.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Password</label>
+                    <input type="password" name="{{ form.password1.name }}" id="{{ form.password1.id_for_label }}" 
+                           style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; background: rgba(255, 255, 255, 0.8); font-size: 16px; transition: all 0.3s ease;" 
+                           placeholder="Password" required>
+                </div>
+                <div>
+                    <label for="{{ form.password2.id_for_label }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Confirm Password</label>
+                    <input type="password" name="{{ form.password2.name }}" id="{{ form.password2.id_for_label }}" 
+                           style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; background: rgba(255, 255, 255, 0.8); font-size: 16px; transition: all 0.3s ease;" 
+                           placeholder="Confirm password" required>
+                </div>
+            </div>
+
+            {% if form.errors %}
+                <div class="alert alert-error">
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 16px; padding: 14px;">
+                <i class="fas fa-user-plus"></i> Create Account
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.3);">
+            <p style="color: #666;">Already have an account? <a href="{% url 'accounts:login' %}" style="color: #667eea; font-weight: 600; text-decoration: none;">Sign in here</a></p>
+        </div>
+    </div>
+</div>
+
+<style>
+    input:focus {
+        outline: none;
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+    }
+</style>
+{% endblock %}
