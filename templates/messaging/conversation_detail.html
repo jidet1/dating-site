@@ -32,32 +32,15 @@
 
     <!-- Messages Container -->
     <div class="card" style="flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
-        <!-- Messages Area -->
         <div id="messagesContainer" style="flex: 1; overflow-y: auto; padding: 1rem; background: linear-gradient(135deg, rgba(102, 126, 234, 0.02), rgba(118, 75, 162, 0.02));">
-            {% if messages %}
-                {% for message in messages %}
-                <div style="margin-bottom: 1rem; display: flex; {% if message.sender == user %}justify-content: flex-end;{% else %}justify-content: flex-start;{% endif %}">
-                    <div style="max-width: 70%; {% if message.sender == user %}background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;{% else %}background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);{% endif %} padding: 0.8rem 1.2rem; backdrop-filter: blur(10px);">
-                        <p style="margin: 0; line-height: 1.4;">{{ message.content }}</p>
-                        <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; {% if message.sender == user %}color: rgba(255, 255, 255, 0.8);{% else %}color: #999;{% endif %}">{{ message.created_at|date:"M d, H:i" }}</p>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div style="text-align: center; color: #666; margin-top: 2rem;">
-                    <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                    <p style="font-size: 1.1rem;">Start your conversation with {{ other_user.first_name }}!</p>
-                    <p style="font-size: 0.9rem; opacity: 0.8;">Say hello and break the ice 👋</p>
-                </div>
-            {% endif %}
+            <!-- Messages will be dynamically inserted here by WebSocket -->
         </div>
 
         <!-- Message Input -->
         <div style="border-top: 1px solid rgba(255, 255, 255, 0.2); padding: 1rem; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px);">
             <form id="messageForm" style="display: flex; gap: 1rem;">
                 {% csrf_token %}
-                <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
-                <input type="text" name="content" id="messageInput" placeholder="Type your message..." 
+                <input type="text" id="messageInput" placeholder="Type your message..." 
                        style="flex: 1; padding: 0.8rem 1.2rem; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 25px; background: rgba(255, 255, 255, 0.9); font-size: 16px; transition: all 0.3s ease;" 
                        required>
                 <button type="submit" class="btn btn-primary" style="border-radius: 50%; width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center;">
@@ -69,159 +52,80 @@
 </div>
 
 <script>
-// Auto-scroll to bottom of messages
-function scrollToBottom() {
-    const container = document.getElementById('messagesContainer');
-    container.scrollTop = container.scrollHeight;
-}
+const userUsername = "{{ user.username }}";
+const otherUsername = "{{ other_user.username }}";
+const conversationId = "{{ conversation.id }}";
+const messagesContainer = document.getElementById('messagesContainer');
 
-// Scroll to bottom on page load
-document.addEventListener('DOMContentLoaded', function() {
-    scrollToBottom();
-});
+const socket = new WebSocket(
+    'wss://' + window.location.host + '/ws/chat/' + conversationId + '/'
+);
 
-// Handle form submission
-document.getElementById('messageForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const messageInput = document.getElementById('messageInput');
-    const content = messageInput.value.trim();
-    
-    if (!content) return;
-    
-    // Add message to UI immediately
-    const messagesContainer = document.getElementById('messagesContainer');
-    const messageDiv = document.createElement('div');
-    messageDiv.style.cssText = 'margin-bottom: 1rem; display: flex; justify-content: flex-end;';
-    messageDiv.innerHTML = `
-        <div style="max-width: 70%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px; padding: 0.8rem 1.2rem; backdrop-filter: blur(10px);">
+function appendMessage(content, sender, timestamp) {
+    const div = document.createElement('div');
+    div.style.marginBottom = '1rem';
+    div.style.display = 'flex';
+    div.style.justifyContent = sender === userUsername ? 'flex-end' : 'flex-start';
+
+    div.innerHTML = `
+        <div style="max-width: 70%; ${sender === userUsername ? 'background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;' : 'background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);'} padding: 0.8rem 1.2rem; backdrop-filter: blur(10px);">
             <p style="margin: 0; line-height: 1.4;">${content}</p>
-            <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; color: rgba(255, 255, 255, 0.8);">Sending...</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; ${sender === userUsername ? 'color: rgba(255, 255, 255, 0.8);' : 'color: #999;'}">${timestamp}</p>
         </div>
     `;
-    messagesContainer.appendChild(messageDiv);
-    
-    // Clear input and scroll
+    messagesContainer.appendChild(div);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+socket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    appendMessage(data.message, data.sender, data.timestamp);
+};
+
+socket.onopen = function() {
+    console.log('WebSocket connection opened.');
+};
+
+socket.onclose = function() {
+    console.log('WebSocket connection closed.');
+};
+
+const messageForm = document.getElementById('messageForm');
+const messageInput = document.getElementById('messageInput');
+
+messageForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const message = messageInput.value.trim();
+    if (message === '') return;
+
+    socket.send(JSON.stringify({
+        message: message,
+        sender: userUsername,
+        receiver: otherUsername,
+    }));
     messageInput.value = '';
-    scrollToBottom();
-    
-    // Send message
-    fetch('{% url "messaging:send_message" %}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Update the "Sending..." text with actual time
-            const timeElement = messageDiv.querySelector('p:last-child');
-            const messageTime = new Date(data.created_at).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            timeElement.textContent = messageTime;
-        } else {
-            // Remove the message if it failed
-            messageDiv.remove();
-            alert('Failed to send message. Please try again.');
-        }
-    })
-    .catch(error => {
-        messageDiv.remove();
-        console.error('Error:', error);
-        alert('Failed to send message. Please try again.');
-    });
 });
-
-// Enter key to send message
-document.getElementById('messageInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        document.getElementById('messageForm').dispatchEvent(new Event('submit'));
-    }
-});
-
-// Focus on input
-document.getElementById('messageInput').focus();
 </script>
 
 <style>
-    #messageInput:focus {
-        outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    
-    #messagesContainer::-webkit-scrollbar {
-        width: 6px;
-    }
-    
-    #messagesContainer::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 3px;
-    }
-    
-    #messagesContainer::-webkit-scrollbar-thumb {
-        background: rgba(102, 126, 234, 0.3);
-        border-radius: 3px;
-    }
-    
-    #messagesContainer::-webkit-scrollbar-thumb:hover {
-        background: rgba(102, 126, 234, 0.5);
-    }
+#messageInput:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+#messagesContainer::-webkit-scrollbar {
+    width: 6px;
+}
+#messagesContainer::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+#messagesContainer::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 3px;
+}
+#messagesContainer::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
+}
 </style>
-
-<script>
-    const currentUsername = "{{ user.username }}";
-    const otherUsername = "{{ other_user.username }}";
-    const chatSocket = new WebSocket(
-        'ws://' + window.location.host +
-        '/ws/chat/' + otherUsername + '/'
-    );
-
-    chatSocket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        const messageContainer = document.getElementById("messagesContainer");
-
-        const isSender = data.sender === currentUsername;
-        const messageDiv = document.createElement("div");
-        messageDiv.style.display = "flex";
-        messageDiv.style.justifyContent = isSender ? "flex-end" : "flex-start";
-        messageDiv.style.marginBottom = "1rem";
-
-        const bubble = document.createElement("div");
-        bubble.textContent = data.message;
-        bubble.style.padding = "0.8rem 1.2rem";
-        bubble.style.maxWidth = "70%";
-        bubble.style.borderRadius = isSender ? "18px 18px 4px 18px" : "18px 18px 18px 4px";
-        bubble.style.background = isSender ? "#667eea" : "#f1f1f1";
-        bubble.style.color = isSender ? "white" : "#333";
-
-        messageDiv.appendChild(bubble);
-        messageContainer.appendChild(messageDiv);
-        messageContainer.scrollTop = messageContainer.scrollHeight;
-    };
-
-    chatSocket.onclose = function(e) {
-        console.error('Chat socket closed unexpectedly');
-    };
-
-    const form = document.querySelector('form');
-    form.onsubmit = function(e) {
-        e.preventDefault();
-        const textarea = form.querySelector('textarea');
-        const message = textarea.value;
-        if (message.trim() !== "") {
-            chatSocket.send(JSON.stringify({ 'message': message }));
-            textarea.value = '';
-        }
-    };
-</script>
-
-
 {% endblock %}
