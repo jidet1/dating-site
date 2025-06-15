@@ -204,6 +204,9 @@ document.getElementById('messageInput').focus();
         const message = input.value.trim();
         if (!message) return;
 
+        // Optimistically scroll to bottom after sending
+        setTimeout(scrollToBottom, 50);
+
         socket.emit("send_message", {
             sender: currentUser,
             receiver: receiver,
