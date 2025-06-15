@@ -45,18 +45,9 @@ INSTALLED_APPS = [
     'matching',
     'messaging',
     'whitenoise.runserver_nostatic',
+    'channels',
 ]
 
-
-INSTALLED_APPS += ['channels']
-
-ASGI_APPLICATION = 'lovematch.asgi.application'
-
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
-}
 
 
 MIDDLEWARE = [
@@ -89,6 +80,15 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'lovematch.wsgi.application'
+
+
+ASGI_APPLICATION = 'lovematch.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 
 # Database

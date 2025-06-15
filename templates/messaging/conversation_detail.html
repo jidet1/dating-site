@@ -177,66 +177,51 @@ document.getElementById('messageInput').focus();
 </style>
 
 <script>
-    const roomName = "{{ room_name }}";
-    const username = "{{ user.username }}";
+    const currentUsername = "{{ user.username }}";
+    const otherUsername = "{{ other_user.username }}";
     const chatSocket = new WebSocket(
         'ws://' + window.location.host +
-        '/ws/chat/' + roomName + '/'
+        '/ws/chat/' + otherUsername + '/'
     );
-
-    const messageInput = document.querySelector('#chat-message-input');
-    const messageList = document.querySelector('#messagesContainer');
-    const typingIndicator = document.getElementById('typing-indicator');
 
     chatSocket.onmessage = function(e) {
         const data = JSON.parse(e.data);
+        const messageContainer = document.getElementById("messagesContainer");
 
-        if (data.type === 'message') {
-            const div = document.createElement('div');
-            div.innerText = `${data.sender}: ${data.message}`;
-            messageList.appendChild(div);
-        }
+        const isSender = data.sender === currentUsername;
+        const messageDiv = document.createElement("div");
+        messageDiv.style.display = "flex";
+        messageDiv.style.justifyContent = isSender ? "flex-end" : "flex-start";
+        messageDiv.style.marginBottom = "1rem";
 
-        if (data.type === 'typing') {
-            typingIndicator.innerText = `${data.sender} is typing...`;
-            setTimeout(() => { typingIndicator.innerText = ''; }, 2000);
-        }
+        const bubble = document.createElement("div");
+        bubble.textContent = data.message;
+        bubble.style.padding = "0.8rem 1.2rem";
+        bubble.style.maxWidth = "70%";
+        bubble.style.borderRadius = isSender ? "18px 18px 4px 18px" : "18px 18px 18px 4px";
+        bubble.style.background = isSender ? "#667eea" : "#f1f1f1";
+        bubble.style.color = isSender ? "white" : "#333";
 
-        if (data.type === 'seen') {
-            const seenMsg = document.createElement('p');
-            seenMsg.innerText = `Seen by ${data.seen_by}`;
-            messageList.appendChild(seenMsg);
-        }
+        messageDiv.appendChild(bubble);
+        messageContainer.appendChild(messageDiv);
+        messageContainer.scrollTop = messageContainer.scrollHeight;
     };
 
     chatSocket.onclose = function(e) {
         console.error('Chat socket closed unexpectedly');
     };
 
-    document.querySelector('#chat-message-form').onsubmit = function(e) {
+    const form = document.querySelector('form');
+    form.onsubmit = function(e) {
         e.preventDefault();
-        const message = messageInput.value;
-        chatSocket.send(JSON.stringify({
-            'type': 'message',
-            'message': message,
-            'sender': username
-        }));
-        messageInput.value = '';
+        const textarea = form.querySelector('textarea');
+        const message = textarea.value;
+        if (message.trim() !== "") {
+            chatSocket.send(JSON.stringify({ 'message': message }));
+            textarea.value = '';
+        }
     };
-
-    messageInput.addEventListener('input', () => {
-        chatSocket.send(JSON.stringify({
-            'type': 'typing',
-            'sender': username
-        }));
-    });
-
-    window.addEventListener('focus', () => {
-        chatSocket.send(JSON.stringify({
-            'type': 'seen',
-            'seen_by': username
-        }));
-    });
 </script>
+
 
 {% endblock %}
