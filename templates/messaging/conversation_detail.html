@@ -204,24 +204,29 @@ document.getElementById('messageInput').focus();
         const message = input.value.trim();
         if (!message) return;
 
-        // Optimistically scroll to bottom after sending
-        setTimeout(scrollToBottom, 50);
-
         socket.emit("send_message", {
             sender: currentUser,
             receiver: receiver,
             message: message
         });
 
-        // Display sent message
-        const myMessageHTML = `
-            <div style="margin-bottom: 1rem; display: flex; justify-content: flex-end;">
-                <div style="max-width: 70%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px; padding: 0.8rem 1.2rem;">
-                    <p style="margin: 0;">${message}</p>
-                </div>
-            </div>`;
-        document.getElementById("messagesContainer").innerHTML += myMessageHTML;
         input.value = "";
+        setTimeout(scrollToBottom, 50);
+    });
+
+    socket.on("receive_message", (data) => {
+        // Only append if the message is from the other user or from self (to avoid duplicates)
+        if (data.sender === receiver || data.sender === currentUser) {
+            const isSelf = data.sender === currentUser;
+            const messageHTML = `
+                <div style="margin-bottom: 1rem; display: flex; justify-content: ${isSelf ? 'flex-end' : 'flex-start'};">
+                    <div style="max-width: 70%; ${isSelf ? 'background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;' : 'background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px;'} padding: 0.8rem 1.2rem;">
+                        <p style="margin: 0;">${data.message}</p>
+                    </div>
+                </div>`;
+            document.getElementById("messagesContainer").innerHTML += messageHTML;
+            scrollToBottom();
+        }
     });
 </script>
 
