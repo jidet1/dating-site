@@ -8,7 +8,6 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from .models import Conversation, Message
 from matching.models import Match
-from datetime import datetime
 
 User = get_user_model()
 
@@ -45,15 +44,10 @@ class ConversationListView(LoginRequiredMixin, ListView):
             })
 
         # ✅ Fix: Sort using datetime.min instead of integer 0
-        from django.utils import timezone
-
-        aware_min = timezone.make_aware(datetime.min)
-
         enriched_conversations.sort(
-            key=lambda x: x['last_message_time'] or aware_min,
+            key=lambda x: x['last_message_time'] or datetime.min,
             reverse=True
         )
-
 
         context['conversations'] = enriched_conversations
         context['user'] = user
