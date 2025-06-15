@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Chat with {{ other_user.profile.full_name }} - LoveMatch{% endblock %}
 
@@ -11,12 +12,10 @@
                 <i class="fas fa-arrow-left"></i>
             </a>
             
-            {% if other_user.profile.photos.first %}
-                <img src="{{ other_user.profile.photos.first.image.url }}" alt="{{ other_user.profile.full_name }}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+            {% if other_user.profile.get_primary_photo %}
+                <img src="{{ other_user.profile.get_primary_photo }}" alt="{{ other_user.profile.full_name }}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
             {% else %}
-                <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
-                    {{ other_user.first_name.0 }}{{ other_user.last_name.0 }}
-                </div>
+                <img src="{% static 'images/default_profile.jpg' %}" alt="Default" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
             {% endif %}
             
             <div style="flex: 1;">
@@ -24,7 +23,7 @@
                 <p style="margin: 0; color: #666; font-size: 0.9rem;">{{ other_user.profile.location|default:"" }}</p>
             </div>
             
-            <a href="{% url 'profiles:profile_detail' other_user.id %}" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
+            <a href="{% url 'profiles:profile_detail' user_id=other_user.id %}" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
                 <i class="fas fa-user"></i> Profile
             </a>
         </div>
@@ -38,7 +37,7 @@
                 {% for message in messages %}
                 <div style="margin-bottom: 1rem; display: flex; {% if message.sender == user %}justify-content: flex-end;{% else %}justify-content: flex-start;{% endif %}">
                     <div style="max-width: 70%; {% if message.sender == user %}background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;{% else %}background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);{% endif %} padding: 0.8rem 1.2rem; backdrop-filter: blur(10px);">
-                        <p style="margin: 0; line-height: 1.4;">{{ message.content }}</p>
+                        <p style="margin: 0; line-height: 1.4;">{{ message.content|escape }}</p>
                         <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; {% if message.sender == user %}color: rgba(255, 255, 255, 0.8);{% else %}color: #999;{% endif %}">{{ message.created_at|date:"M d, H:i" }}</p>
                     </div>
                 </div>
@@ -54,7 +53,7 @@
 
         <!-- Message Input -->
         <div style="border-top: 1px solid rgba(255, 255, 255, 0.2); padding: 1rem; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px);">
-            <form id="messageForm" style="display: flex; gap: 1rem;">
+            <form id="messageForm" action="javascript:void(0);" style="display: flex; gap: 1rem;">
                 {% csrf_token %}
                 <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
                 <input type="text" name="content" id="messageInput" placeholder="Type your message..." 
@@ -69,28 +68,108 @@
 </div>
 
 <script>
-// Auto-scroll to bottom of messages
 function scrollToBottom() {
     const container = document.getElementById('messagesContainer');
-    container.scrollTop = container.scrollHeight;
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
 }
 
-// Scroll to bottom on page load
+function escapeHTML(str) {
+    if (typeof str !== "string") {
+        return "";
+    }
+    return str.replace(/[&<>"'`=\/]/g, function(s) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+            '`': '&#x60;',
+            '=': '&#x3D;',
+            '/': '&#x2F;'
+        }[s];
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     scrollToBottom();
-});
 
-// (Removed duplicate form submission handler to avoid double sending and UI issues)
+    const messageInput = document.getElementById('messageInput');
+    const messageForm = document.getElementById('messageForm');
+    const messagesContainer = document.getElementById('messagesContainer');
+    const currentUsername = "{{ request.user.username|escapejs }}";
+    const otherUsername = "{{ other_user.username|escapejs }}";
+    const conversationId = "{{ conversation.id|escapejs }}";
 
-// Enter key to send message
-document.getElementById('messageInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        document.getElementById('messageForm').dispatchEvent(new Event('submit'));
+    if (!messageInput || !messageForm || !messagesContainer) {
+        console.error('Required DOM elements are missing.');
+        return;
+    }
+
+    // WebSocket connection
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const chatSocket = new WebSocket(
+        `${protocol}://${window.location.host}/ws/chat/${encodeURIComponent(otherUsername)}/`
+    );
+
+    chatSocket.onopen = function(e) {
+        console.log('WebSocket connected');
+    };
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const isSelf = data.sender === currentUsername;
+        const messageHTML = `
+            <div style="margin-bottom: 1rem; display: flex; justify-content: ${isSelf ? 'flex-end' : 'flex-start'};">
+                <div style="max-width: 70%; ${isSelf ? 'background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;' : 'background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px;'} padding: 0.8rem 1.2rem;">
+                    <p style="margin: 0;">${escapeHTML(data.message)}</p>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; ${isSelf ? 'color: rgba(255, 255, 255, 0.8);' : 'color: #999;'}">${new Date(data.created_at || Date.now()).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: false })}</p>
+                </div>
+            </div>`;
+        if (messagesContainer) {
+            messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
+            scrollToBottom();
+        }
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('WebSocket closed unexpectedly');
+    };
+
+    chatSocket.onerror = function(e) {
+        console.error('WebSocket error:', e);
+    };
+
+    if (messageInput && messageForm) {
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                messageForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            }
+        });
+
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Send message via WebSocket
+            chatSocket.send(JSON.stringify({
+                'message': message,
+                'sender': currentUsername,
+                'conversation_id': conversationId
+            }));
+
+            messageInput.value = '';
+            messageInput.focus();
+            scrollToBottom();
+        });
+
+        messageInput.focus();
     }
 });
-
-// Focus on input
-document.getElementById('messageInput').focus();
 </script>
 
 <style>
@@ -118,57 +197,5 @@ document.getElementById('messageInput').focus();
         background: rgba(102, 126, 234, 0.5);
     }
 </style>
-
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script>
-    const socket = io("https://dating-site-production.up.railway.app");  // use production URL if deployed
-    const currentUser = "{{ request.user.username }}";
-    const receiver = "{{ other_user.username }}";
-    // Handle form submission via AJAX and emit message via Socket.IO
-    document.getElementById('messageForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const input = document.getElementById('messageInput');
-        const message = input.value.trim();
-        if (!message) return;
-
-        // Emit message to Socket.IO server
-        socket.emit("send_message", {
-            sender: currentUser,
-            receiver: receiver,
-            message: message
-        });
-
-        // Optimistically add the message to the chat UI
-        const messageHTML = `
-            <div style="margin-bottom: 1rem; display: flex; justify-content: flex-end;">
-                <div style="max-width: 70%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px; padding: 0.8rem 1.2rem;">
-                    <p style="margin: 0;">${message}</p>
-                </div>
-            </div>`;
-        document.getElementById("messagesContainer").innerHTML += messageHTML;
-
-        input.value = "";
-        setTimeout(scrollToBottom, 50);
-    });
-    socket.on("connect", () => {
-        socket.emit("join", { username: currentUser });
-    });
-
-socket.on("receive_message", (data) => {
-    // Only append if the message is from the other user or from self (to avoid duplicates)
-    if (data.sender === receiver || data.sender === currentUser) {
-        const isSelf = data.sender === currentUser;
-        const messageHTML = `
-            <div style="margin-bottom: 1rem; display: flex; justify-content: ${isSelf ? 'flex-end' : 'flex-start'};">
-                <div style="max-width: 70%; ${isSelf ? 'background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;' : 'background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px;'} padding: 0.8rem 1.2rem;">
-                    <p style="margin: 0;">${data.message}</p>
-                </div>
-            </div>`;
-        document.getElementById("messagesContainer").innerHTML += messageHTML;
-        scrollToBottom();
-    }
-});
-</script>
-
 
 {% endblock %}
