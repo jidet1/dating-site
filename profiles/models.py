@@ -70,6 +70,12 @@ class ProfilePhoto(models.Model):
     class Meta:
         ordering = ['-is_primary', '-created_at']
 
+    def save(self, *args, **kwargs):
+        # If the profile has no primary photo, make this one primary
+        if not self.pk and not ProfilePhoto.objects.filter(profile=self.profile, is_primary=True).exists():
+            self.is_primary = True
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.profile.user.first_name}'s Photo"
 
