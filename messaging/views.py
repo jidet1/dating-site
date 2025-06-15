@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from .models import Conversation, Message
 from matching.models import Match
+from datetime import datetime
 
 User = get_user_model()
 
@@ -43,13 +44,15 @@ class ConversationListView(LoginRequiredMixin, ListView):
                 'last_message_time': last_message.created_at if last_message else None
             })
 
-        # 🔥 Sort conversations by most recent message time
-        enriched_conversations.sort(key=lambda x: x['last_message_time'] or 0, reverse=True)
+        # ✅ Fix: Sort using datetime.min instead of integer 0
+        enriched_conversations.sort(
+            key=lambda x: x['last_message_time'] or datetime.min,
+            reverse=True
+        )
 
         context['conversations'] = enriched_conversations
         context['user'] = user
         return context
-
 class ConversationDetailView(LoginRequiredMixin, DetailView):
     model = Conversation
     template_name = 'messaging/conversation_detail.html'

@@ -1,35 +1,303 @@
 {% extends 'base.html' %}
-{% block title %}Dashboard | LoveMatch{% endblock %}
+
+{% block title %}Dashboard - LoveMatch{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h1>Welcome, {{ user.username }}!</h1>
-    <p>This is your dashboard where you can see your recent matches and messages.</p>
-</div>
+<div class="dashboard-container" style="padding: 1rem; max-width: 1200px; margin: 0 auto;">
 
-<div class="card">
-    <h2>Your Recent Matches</h2>
-    {% if recent_matches %}
-        <ul>
-            {% for match in recent_matches %}
-                <li>{{ match }}</li>
-            {% endfor %}
-        </ul>
+    {% if not has_profile %}
+    <div class="center-box">
+        <div class="card">
+            <i class="fas fa-user-circle icon-large purple"></i>
+            <h1 class="heading-xl">Welcome to LoveMatch!</h1>
+            <p class="text-md">Complete your profile to start finding amazing people</p>
+            <a href="{% url 'profiles:create_profile' %}" class="btn btn-primary mt-3">
+                <i class="fas fa-user-plus"></i> Create Your Profile
+            </a>
+        </div>
+    </div>
+
     {% else %}
-        <p>You have no matches yet. Start discovering now!</p>
-    {% endif %}
-</div>
+    <!-- Welcome Header -->
+    <div class="center-text mb-6">
+        <h1 class="gradient-text heading-xl">Welcome back, {{ user.first_name }}!</h1>
+        <p class="text-md muted">Ready to find your perfect match?</p>
+    </div>
 
-<div class="card">
-    <h2>Recent Profiles</h2>
+    <!-- Quick Actions -->
+    <div class="card-grid">
+        <div class="action-card gradient1">
+            <i class="fas fa-search icon-md"></i>
+            <h3>Discover People</h3>
+            <p>Find amazing people near you</p>
+            <a href="{% url 'profiles:discover' %}" class="btn btn-light">Start Discovering</a>
+        </div>
+
+        <div class="action-card gradient2">
+            <i class="fas fa-heart icon-md"></i>
+            <h3>Your Matches</h3>
+            <p>See who likes you back</p>
+            <a href="{% url 'matching:matches' %}" class="btn btn-light">View Matches</a>
+        </div>
+
+        <div class="action-card gradient3">
+            <i class="fas fa-comments icon-md"></i>
+            <h3>Messages</h3>
+            <p>Chat with your matches</p>
+            <a href="{% url 'messaging:conversation_list' %}" class="btn btn-light">Open Messages</a>
+        </div>
+    </div>
+
+    <!-- Profile Overview -->
+    <div class="card mt-6">
+        <div class="flex-space-between mb-4">
+            <h2>Your Profile</h2>
+            <a href="{% url 'profiles:edit_profile' %}" class="btn btn-secondary">
+                <i class="fas fa-edit"></i> Edit Profile
+            </a>
+        </div>
+
+        <div class="profile-flex">
+            {% if profile.photos.first %}
+            <img src="{{ profile.photos.first.image.url }}" alt="Profile photo" class="profile-img">
+            {% else %}
+            <div class="profile-placeholder">
+                {{ user.first_name|first }}{{ user.last_name|first }}
+            </div>
+            {% endif %}
+
+            <div>
+                <h3>{{ profile.full_name }}, {{ profile.age }}</h3>
+                <p class="muted">{{ profile.location|default:"Location not set" }}</p>
+                <p>{{ profile.bio|default:"No bio available. Add one to make your profile more attractive!" }}</p>
+
+                {% if profile.interests.all %}
+                <div class="mt-2">
+                    <strong>Interests:</strong>
+                    <div class="interest-tags">
+                        {% for interest in profile.interests.all %}
+                        <span class="tag">{{ interest.interest.name }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Profiles -->
     {% if recent_profiles %}
-        <ul>
+    <div class="card mt-6">
+        <h2>People You Might Like</h2>
+        <div class="profile-grid">
             {% for profile in recent_profiles %}
-                <li>{{ profile.username }} - {{ profile.age }} - {{ profile.location }}</li>
+            <div class="profile-card">
+                {% if profile.photos.first %}
+                <img src="{{ profile.photos.first.image.url }}" alt="{{ profile.full_name }}" class="card-img">
+                {% else %}
+                <div class="card-img-placeholder">
+                    {{ profile.user.first_name|first }}{{ profile.user.last_name|first }}
+                </div>
+                {% endif %}
+
+                <div class="card-body">
+                    <h4>{{ profile.full_name }}, {{ profile.age }}</h4>
+                    <p class="muted">{{ profile.location|default:"Location not set" }}</p>
+                    <a href="{% url 'profiles:profile_detail' profile.user.id %}" class="btn btn-primary w-full">View Profile</a>
+                </div>
+            </div>
             {% endfor %}
-        </ul>
-    {% else %}
-        <p>No profiles to show.</p>
+        </div>
+    </div>
     {% endif %}
+    {% endif %}
+
 </div>
+
+<style>
+    .dashboard-container { padding: 1rem; }
+    .center-box { text-align: center; margin: 4rem auto; max-width: 600px; }
+    .center-text { text-align: center; }
+    .mb-6 { margin-bottom: 3rem; }
+    .mt-6 { margin-top: 3rem; }
+    .mt-3 { margin-top: 1.5rem; }
+    .heading-xl { font-size: 2.5rem; font-weight: 800; }
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .text-md { font-size: 1.1rem; }
+    .muted { color: #666; }
+
+    .card { background: #fff; padding: 2rem; border-radius: 1rem; box-shadow: 0 0 20px rgba(0, 0, 0, 0.05); }
+
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+    }
+
+    .action-card {
+        text-align: center;
+        padding: 2rem;
+        border-radius: 1rem;
+        color: white;
+    }
+
+    .gradient1 { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .gradient2 { background: linear-gradient(135deg, #764ba2, #667eea); }
+    .gradient3 { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
+
+    .btn-light {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 6px;
+        display: inline-block;
+        margin-top: 1rem;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border-radius: 6px;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-secondary {
+        background: #f0f0f0;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        text-decoration: none;
+    }
+
+    .w-full { width: 100%; }
+
+    .profile-flex {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        align-items: center;
+    }
+
+    .profile-img {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .profile-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        font-size: 2rem;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .interest-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .tag {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.9rem;
+    }
+
+    .profile-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+    }
+
+    .profile-card {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .profile-card:hover {
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+
+    .card-img-placeholder {
+        width: 100%;
+        height: 200px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .icon-large {
+        font-size: 4rem;
+    }
+
+    .icon-md {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .purple {
+        color: #667eea;
+    }
+
+    .flex-space-between {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    @media (max-width: 600px) {
+        .heading-xl { font-size: 2rem; }
+        .icon-large { font-size: 3rem; }
+        .profile-flex { flex-direction: column; align-items: flex-start; }
+    }
+</style>
+
+{% block extra_js %}
+<script>
+    gsap.from(".profile-card", {
+        duration: 0.8,
+        y: 50,
+        opacity: 0,
+        stagger: 0.1,
+        ease: "power2.out",
+        delay: 0.3
+    });
+</script>
+{% endblock %}
 {% endblock %}
