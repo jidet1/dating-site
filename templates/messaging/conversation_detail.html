@@ -121,7 +121,7 @@ document.getElementById('messageInput').focus();
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-    const socket = io("http://localhost:5000");  // use production URL if deployed
+    const socket = io("https://dating-site-production.up.railway.app");  // use production URL if deployed
     const currentUser = "{{ request.user.username }}";
     const receiver = "{{ other_user.username }}";
     // Handle form submission via AJAX and emit message via Socket.IO
