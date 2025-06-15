@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     'messaging',
     'whitenoise.runserver_nostatic',
     'channels',
-    'profiles.apps.ProfilesConfig',
 ]
 
 
