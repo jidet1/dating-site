@@ -58,23 +58,21 @@ class ConversationDetailView(LoginRequiredMixin, DetailView):
     model = Conversation
     template_name = 'messaging/conversation_detail.html'
     context_object_name = 'conversation'
-    
-    def get_object(self):
-        match_id = self.kwargs['match_id']
-        match = get_object_or_404(Match, id=match_id)
+
+    def get_queryset(self):
+        return Conversation.objects.filter(participants=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        conversation = self.get_object()
+
+        # Use correct related name from ChatMessage
+        context['chat_messages'] = conversation.messages.order_by('created_at')
         
-        if self.request.user not in [match.user1, match.user2]:
-            raise Http404("Conversation not found")
-        
-        conversation, created = Conversation.objects.get_or_create(match=match)
-        
-        Message.objects.filter(
-            conversation=conversation,
-            recipient=self.request.user,
-            is_read=False
-        ).update(is_read=True)
-        
-        return conversation
+        other_user = conversation.participants.exclude(id=self.request.user.id).first()
+        context['other_user'] = other_user
+
+        return context
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

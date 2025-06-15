@@ -13,9 +13,8 @@ class Conversation(models.Model):
         return f"Conversation: {self.match}"
 
 
-
 class Message(models.Model):
-    conversation = models.ForeignKey('Conversation', on_delete=models.CASCADE)
+    conversation = models.ForeignKey('Conversation', related_name='messages', on_delete=models.CASCADE)
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     recipient = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
     content = models.TextField()
@@ -24,3 +23,4 @@ class Message(models.Model):
 
     def __str__(self):
         return f'Message from {self.sender} to {self.recipient}'
+
