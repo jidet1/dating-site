@@ -31,8 +31,8 @@ class ConversationListView(LoginRequiredMixin, ListView):
         for conversation in context['conversations']:
             match = conversation.match
             other_user = match.user2 if match.user1 == user else match.user1
-            last_message = conversation.messages.order_by('-created_at').first()
-            unread_count = conversation.messages.filter(is_read=False).exclude(sender=user).count()
+            last_message = conversation.messages.all().order_by('-created_at').first()
+            unread_count = conversation.messages.all().filter(is_read=False).exclude(sender=user).count()
 
             enriched_conversations.append({
                 'conversation': conversation,
@@ -77,10 +77,17 @@ class ConversationDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['messages'] = self.object.messages.select_related('sender').all()
-        try:
-            context['other_user'] = self.object.match.get_other_user(self.request.user)
-        except AttributeError:
-            raise Http404("Invalid match configuration")
+        match = self.object.match
+        if hasattr(match, 'get_other_user'):
+            context['other_user'] = match.get_other_user(self.request.user)
+        else:
+            # Fallback: determine the other user manually
+            if self.request.user == match.user1:
+                context['other_user'] = match.user2
+            elif self.request.user == match.user2:
+                context['other_user'] = match.user1
+            else:
+                raise Http404("Invalid match configuration")
         return context
 
 class SendMessageView(LoginRequiredMixin, View):
@@ -101,10 +108,32 @@ class SendMessageView(LoginRequiredMixin, View):
         message = Message.objects.create(
             conversation=conversation,
             sender=request.user,
-            content=content,
-            is_read=False
+            content=content
         )
-        
+
+        try:
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+            channel_layer = get_channel_layer()
+            if channel_layer is not None:
+                async_to_sync(channel_layer.group_send)(
+                    f"chat_{conversation.id}",
+                    {
+                        "type": "chat.message",
+                        "message": {
+                            "id": message.id,
+                            "sender": message.sender.username,
+                            "content": message.content,
+                            "created_at": message.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                    }
+                )
+        except ImportError:
+            pass  # Channels not installed, skip real-time notification
+        except Exception as e:
+            # Log or handle other exceptions (e.g., channel layer misconfiguration)
+            pass
+
         return JsonResponse({
             'status': 'success',
             'message': 'Message sent',

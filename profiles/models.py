@@ -10,18 +10,16 @@ class Profile(models.Model):
         ('F', 'Female'),
         ('O', 'Other'),
     ]
-    
     RELATIONSHIP_CHOICES = [
         ('casual', 'Casual Dating'),
         ('serious', 'Serious Relationship'),
         ('marriage', 'Marriage'),
         ('friendship', 'Friendship'),
     ]
-    
     EDUCATION_CHOICES = [
         ('high_school', 'High School'),
-        ('bachelors', 'Bachelor\'s Degree'),
-        ('masters', 'Master\'s Degree'),
+        ('bachelors', "Bachelor's Degree"),
+        ('masters', "Master's Degree"),
         ('phd', 'PhD'),
         ('other', 'Other'),
     ]
@@ -33,7 +31,10 @@ class Profile(models.Model):
     location = models.CharField(max_length=100, blank=True)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
-    height = models.IntegerField(null=True, blank=True, help_text="Height in cm")
+    height = models.IntegerField(
+        null=True, blank=True, help_text="Height in cm",
+        validators=[MinValueValidator(50), MaxValueValidator(250)]
+    )
     occupation = models.CharField(max_length=100, blank=True)
     education = models.CharField(max_length=20, choices=EDUCATION_CHOICES, blank=True)
     looking_for = models.CharField(max_length=20, choices=RELATIONSHIP_CHOICES, blank=True)
@@ -49,17 +50,15 @@ class Profile(models.Model):
 
     @property
     def age(self):
-        return self.user.age
+        return getattr(self.user, 'age', None)
 
     @property
     def full_name(self):
         return f"{self.user.first_name} {self.user.last_name}"
 
     def get_primary_photo(self):
-        """Returns the URL of the user's primary profile photo or None if not set."""
         primary = self.photos.filter(is_primary=True).first()
         return primary.image.url if primary else None
-
 
 class ProfilePhoto(models.Model):
     profile = models.ForeignKey(Profile, related_name='photos', on_delete=models.CASCADE)
@@ -71,7 +70,6 @@ class ProfilePhoto(models.Model):
         ordering = ['-is_primary', '-created_at']
 
     def save(self, *args, **kwargs):
-        # If the profile has no primary photo, make this one primary
         if not self.pk and not ProfilePhoto.objects.filter(profile=self.profile, is_primary=True).exists():
             self.is_primary = True
         super().save(*args, **kwargs)
@@ -79,13 +77,11 @@ class ProfilePhoto(models.Model):
     def __str__(self):
         return f"{self.profile.user.first_name}'s Photo"
 
-
 class Interest(models.Model):
     name = models.CharField(max_length=50, unique=True)
-    
+
     def __str__(self):
         return self.name
-
 
 class ProfileInterest(models.Model):
     profile = models.ForeignKey(Profile, related_name='interests', on_delete=models.CASCADE)
@@ -93,7 +89,6 @@ class ProfileInterest(models.Model):
 
     class Meta:
         unique_together = ['profile', 'interest']
-
 
 class BlockedUser(models.Model):
     blocker = models.ForeignKey(User, related_name='blocked_users', on_delete=models.CASCADE)
@@ -104,7 +99,6 @@ class BlockedUser(models.Model):
     class Meta:
         unique_together = ['blocker', 'blocked']
 
-
 class ReportUser(models.Model):
     REPORT_REASONS = [
         ('fake', 'Fake Profile'),
@@ -113,7 +107,6 @@ class ReportUser(models.Model):
         ('spam', 'Spam'),
         ('other', 'Other'),
     ]
-
     reporter = models.ForeignKey(User, related_name='reports_made', on_delete=models.CASCADE)
     reported = models.ForeignKey(User, related_name='reports_received', on_delete=models.CASCADE)
     reason = models.CharField(max_length=20, choices=REPORT_REASONS)

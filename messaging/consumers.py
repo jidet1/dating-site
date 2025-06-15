@@ -14,7 +14,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if not self.user.is_authenticated:
             await self.close()
             return
-
+            # Prevent users from chatting with themselves
+            if self.user.username == self.other_username:
+                await self.close()
+                return
         # Get conversation
         self.conversation = await self.get_conversation()
         if not self.conversation:
@@ -40,30 +43,44 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         try:
             data = json.loads(text_data)
-            message = data['message']
-            sender_username = data['sender']
-            conversation_id = data['conversation_id']
+            message = data.get('message')
+            sender_username = data.get('sender')
+            conversation_id = data.get('conversation_id')
+
+            # Validate required fields
+            if not all([message, sender_username, conversation_id]):
+                await self.send(text_data=json.dumps({'error': 'Missing required fields.'}))
+                return
 
             # Validate sender
             if sender_username != self.user.username:
+                await self.send(text_data=json.dumps({'error': 'Sender mismatch.'}))
+                return
+
+            # Validate conversation membership
+            if not self.conversation or str(self.conversation.id) != str(conversation_id):
+                await self.send(text_data=json.dumps({'error': 'Invalid conversation.'}))
                 return
 
             # Save message
             saved_message = await self.save_message(message, sender_username, conversation_id)
 
-            # Broadcast message
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'chat_message',
-                    'message': message,
-                    'sender': sender_username,
-                    'created_at': saved_message.created_at.strftime('%Y-%m-%dT%H:%M:%S'),
-                    'is_read': saved_message.is_read,
-                }
-            )
-        except (KeyError, User.DoesNotExist, Conversation.DoesNotExist):
-            pass  # Silently ignore invalid data
+            # Only broadcast if message was saved successfully
+            if saved_message is not None:
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'chat_message',
+                        'message': message,
+                        'sender': sender_username,
+                        'created_at': saved_message.created_at.strftime('%Y-%m-%dT%H:%M:%S'),
+                        'is_read': saved_message.is_read,
+                    }
+                )
+            else:
+                await self.send(text_data=json.dumps({'error': 'Failed to save message.'}))
+        except Exception as e:
+            await self.send(text_data=json.dumps({'error': f'Invalid data: {str(e)}'}))
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
@@ -93,11 +110,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, message, sender_username, conversation_id):
-        sender = User.objects.get(username=sender_username)
-        conversation = Conversation.objects.get(id=conversation_id)
-        return Message.objects.create(
-            conversation=conversation,
-            sender=sender,
-            content=message,
-            is_read=False
-        )
+        try:
+            sender = User.objects.get(username=sender_username)
+            conversation = Conversation.objects.get(id=conversation_id)
+            return Message.objects.create(
+                conversation=conversation,
+                sender=sender,
+                content=message,
+                is_read=False
+            )
+        except (User.DoesNotExist, Conversation.DoesNotExist):
+            return None
