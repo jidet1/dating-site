@@ -23,4 +23,4 @@ class Message(models.Model):
         ordering = ['created_at']
     
     def __str__(self):
-        return f"Message from {self.sender.first_name}: {self.content[:50]}..."
+        return f"Message from {self.sender}: {self.content[:50]}..."

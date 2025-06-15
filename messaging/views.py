@@ -102,6 +102,9 @@ class SendMessageView(LoginRequiredMixin, View):
         
         conversation = get_object_or_404(Conversation, id=conversation_id)
         
+        if not hasattr(conversation, 'match') or not conversation.match:
+            return JsonResponse({'status': 'error', 'message': 'Conversation match not found'}, status=400)
+
         if request.user not in [conversation.match.user1, conversation.match.user2]:
             return JsonResponse({'status': 'error', 'message': 'Unauthorized'}, status=403)
         

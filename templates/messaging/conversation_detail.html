@@ -80,64 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     scrollToBottom();
 });
 
-// Handle form submission
-document.getElementById('messageForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const messageInput = document.getElementById('messageInput');
-    const content = messageInput.value.trim();
-    
-    if (!content) return;
-    
-    // Add message to UI immediately
-    const messagesContainer = document.getElementById('messagesContainer');
-    const messageDiv = document.createElement('div');
-    messageDiv.style.cssText = 'margin-bottom: 1rem; display: flex; justify-content: flex-end;';
-    messageDiv.innerHTML = `
-        <div style="max-width: 70%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px; padding: 0.8rem 1.2rem; backdrop-filter: blur(10px);">
-            <p style="margin: 0; line-height: 1.4;">${content}</p>
-            <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; color: rgba(255, 255, 255, 0.8);">Sending...</p>
-        </div>
-    `;
-    messagesContainer.appendChild(messageDiv);
-    
-    // Clear input and scroll
-    messageInput.value = '';
-    scrollToBottom();
-    
-    // Send message
-    fetch('{% url "messaging:send_message" %}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Update the "Sending..." text with actual time
-            const timeElement = messageDiv.querySelector('p:last-child');
-            const messageTime = new Date(data.created_at).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            timeElement.textContent = messageTime;
-        } else {
-            // Remove the message if it failed
-            messageDiv.remove();
-            alert('Failed to send message. Please try again.');
-        }
-    })
-    .catch(error => {
-        messageDiv.remove();
-        console.error('Error:', error);
-        alert('Failed to send message. Please try again.');
-    });
-});
+// (Removed duplicate form submission handler to avoid double sending and UI issues)
 
 // Enter key to send message
 document.getElementById('messageInput').addEventListener('keypress', function(e) {
@@ -181,7 +124,32 @@ document.getElementById('messageInput').focus();
     const socket = io("http://localhost:5000");  // use production URL if deployed
     const currentUser = "{{ request.user.username }}";
     const receiver = "{{ other_user.username }}";
+    // Handle form submission via AJAX and emit message via Socket.IO
+    document.getElementById('messageForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+        if (!message) return;
 
+        // Emit message to Socket.IO server
+        socket.emit("send_message", {
+            sender: currentUser,
+            receiver: receiver,
+            message: message
+        });
+
+        // Optimistically add the message to the chat UI
+        const messageHTML = `
+            <div style="margin-bottom: 1rem; display: flex; justify-content: flex-end;">
+                <div style="max-width: 70%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px; padding: 0.8rem 1.2rem;">
+                    <p style="margin: 0;">${message}</p>
+                </div>
+            </div>`;
+        document.getElementById("messagesContainer").innerHTML += messageHTML;
+
+        input.value = "";
+        setTimeout(scrollToBottom, 50);
+    });
     socket.on("connect", () => {
         socket.emit("join", { username: currentUser });
     });
@@ -196,12 +164,13 @@ document.getElementById('messageInput').focus();
                 </div>`;
             document.getElementById("messagesContainer").innerHTML += messageHTML;
         }
-    });
-
-    document.getElementById("messageForm").addEventListener("submit", function(e) {
+// Enter key to send message
+document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
         e.preventDefault();
-        const input = document.getElementById("messageInput");
-        const message = input.value.trim();
+        document.getElementById('messageForm').dispatchEvent(new Event('submit'));
+    }
+});
         if (!message) return;
 
         socket.emit("send_message", {

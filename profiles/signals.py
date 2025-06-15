@@ -14,3 +14,8 @@ def create_user_profile(sender, instance, created, **kwargs):
             interested_in='O',  # Default value
             full_name=instance.username
         )
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if hasattr(instance, 'profile'):
+        instance.profile.save()
