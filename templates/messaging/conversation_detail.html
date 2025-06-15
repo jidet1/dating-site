@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!message) return;
 
         chatSocket.send(JSON.stringify({
-            'message': message,
+            'content': message,
             'sender': currentUsername,
             'conversation_id': conversationId
         }));
