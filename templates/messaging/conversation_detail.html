@@ -175,4 +175,68 @@ document.getElementById('messageInput').focus();
         background: rgba(102, 126, 234, 0.5);
     }
 </style>
+
+<script>
+    const roomName = "{{ room_name }}";
+    const username = "{{ user.username }}";
+    const chatSocket = new WebSocket(
+        'ws://' + window.location.host +
+        '/ws/chat/' + roomName + '/'
+    );
+
+    const messageInput = document.querySelector('#chat-message-input');
+    const messageList = document.querySelector('#messagesContainer');
+    const typingIndicator = document.getElementById('typing-indicator');
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+
+        if (data.type === 'message') {
+            const div = document.createElement('div');
+            div.innerText = `${data.sender}: ${data.message}`;
+            messageList.appendChild(div);
+        }
+
+        if (data.type === 'typing') {
+            typingIndicator.innerText = `${data.sender} is typing...`;
+            setTimeout(() => { typingIndicator.innerText = ''; }, 2000);
+        }
+
+        if (data.type === 'seen') {
+            const seenMsg = document.createElement('p');
+            seenMsg.innerText = `Seen by ${data.seen_by}`;
+            messageList.appendChild(seenMsg);
+        }
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly');
+    };
+
+    document.querySelector('#chat-message-form').onsubmit = function(e) {
+        e.preventDefault();
+        const message = messageInput.value;
+        chatSocket.send(JSON.stringify({
+            'type': 'message',
+            'message': message,
+            'sender': username
+        }));
+        messageInput.value = '';
+    };
+
+    messageInput.addEventListener('input', () => {
+        chatSocket.send(JSON.stringify({
+            'type': 'typing',
+            'sender': username
+        }));
+    });
+
+    window.addEventListener('focus', () => {
+        chatSocket.send(JSON.stringify({
+            'type': 'seen',
+            'seen_by': username
+        }));
+    });
+</script>
+
 {% endblock %}
