@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Chat with {{ other_user.profile.full_name }} - LoveMatch{% endblock %}
+{% block title %}Chat with {{ other_user.profile.full_name|default:other_user.username }} - LoveMatch{% endblock %}
 
 {% block content %}
 <div style="max-width: 800px; margin: 0 auto; height: 80vh; display: flex; flex-direction: column;">
@@ -19,11 +19,11 @@
             {% endif %}
             
             <div style="flex: 1;">
-                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 600;">{{ other_user.profile.full_name }}</h3>
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 600;">{{ other_user.profile.full_name|default:other_user.username }}</h3>
                 <p style="margin: 0; color: #666; font-size: 0.9rem;">{{ other_user.profile.location|default:"" }}</p>
             </div>
             
-            <a href="{% url 'profiles:profile_detail' user_id=other_user.id %}" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
+            <a href="{% url 'profiles:profile_detail' other_user.id %}" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
                 <i class="fas fa-user"></i> Profile
             </a>
         </div>
@@ -36,9 +36,16 @@
             {% if messages %}
                 {% for message in messages %}
                 <div style="margin-bottom: 1rem; display: flex; {% if message.sender == user %}justify-content: flex-end;{% else %}justify-content: flex-start;{% endif %}">
-                    <div style="max-width: 70%; {% if message.sender == user %}background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;{% else %}background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);{% endif %} padding: 0.8rem 1.2rem; backdrop-filter: blur(10px);">
-                        <p style="margin: 0; line-height: 1.4;">{{ message.content|escape }}</p>
-                        <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; {% if message.sender == user %}color: rgba(255, 255, 255, 0.8);{% else %}color: #999;{% endif %}">{{ message.created_at|date:"M d, H:i" }}</p>
+                    <div style="max-width: 70%; {% if message.sender == user %}background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;{% else %}background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);{% endif %} padding: 0.8rem 1.2rem; backdrop-filter: blur(10px); word-break: break-word;">
+                        <p style="margin: 0; line-height: 1.4;" class="emoji">{{ message.content|escape }}</p>
+                        <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; {% if message.sender == user %}color: rgba(255, 255, 255, 0.8);{% else %}color: #999;{% endif %}">
+                            {{ message.created_at|date:"M d, H:i" }}
+                            {% if message.sender == user and message.is_read %}
+                                <span title="Read">&#10004;&#10004;</span>
+                            {% elif message.sender == user %}
+                                <span title="Sent">&#10004;</span>
+                            {% endif %}
+                        </p>
                     </div>
                 </div>
                 {% endfor %}
@@ -56,7 +63,7 @@
             <form id="messageForm" action="javascript:void(0);" style="display: flex; gap: 1rem;">
                 {% csrf_token %}
                 <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
-                <input type="text" name="content" id="messageInput" placeholder="Type your message..." 
+                <input type="text" name="content" id="messageInput" placeholder="Type your message and use 😊 emojis..." 
                        style="flex: 1; padding: 0.8rem 1.2rem; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 25px; background: rgba(255, 255, 255, 0.9); font-size: 16px; transition: all 0.3s ease;" 
                        required>
                 <button type="submit" class="btn btn-primary" style="border-radius: 50%; width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center;">
@@ -67,6 +74,9 @@
     </div>
 </div>
 
+<!-- Twemoji CDN -->
+<script src="https://twemoji.maxcdn.com/v/latest/twemoji.min.js" crossorigin="anonymous"></script>
+
 <script>
 function scrollToBottom() {
     const container = document.getElementById('messagesContainer');
@@ -76,25 +86,16 @@ function scrollToBottom() {
 }
 
 function escapeHTML(str) {
-    if (typeof str !== "string") {
-        return "";
-    }
-    return str.replace(/[&<>"'`=\/]/g, function(s) {
-        return {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;',
-            '`': '&#x60;',
-            '=': '&#x3D;',
-            '/': '&#x2F;'
-        }[s];
-    });
+    if (typeof str !== "string") return "";
+    return str.replace(/[&<>"'`=\/]/g, s => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+        "'": '&#39;', '`': '&#x60;', '=': '&#x3D;', '/': '&#x2F;'
+    }[s]));
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     scrollToBottom();
+    twemoji.parse(document.body);  // Render emojis
 
     const messageInput = document.getElementById('messageInput');
     const messageForm = document.getElementById('messageForm');
@@ -103,35 +104,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const otherUsername = "{{ other_user.username|escapejs }}";
     const conversationId = "{{ conversation.id|escapejs }}";
 
-    if (!messageInput || !messageForm || !messagesContainer) {
-        console.error('Required DOM elements are missing.');
-        return;
-    }
-
-    // WebSocket connection
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const chatSocket = new WebSocket(
         `${protocol}://${window.location.host}/ws/chat/${encodeURIComponent(otherUsername)}/`
     );
 
-    chatSocket.onopen = function(e) {
+    chatSocket.onopen = function() {
         console.log('WebSocket connected');
     };
 
     chatSocket.onmessage = function(e) {
         const data = JSON.parse(e.data);
         const isSelf = data.sender === currentUsername;
+        const timeStamp = new Date(data.created_at || Date.now()).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: false
+        });
+        const receipt = isSelf ? '<span title="Sent">&#10004;</span>' : '';
+
         const messageHTML = `
             <div style="margin-bottom: 1rem; display: flex; justify-content: ${isSelf ? 'flex-end' : 'flex-start'};">
-                <div style="max-width: 70%; ${isSelf ? 'background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;' : 'background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px;'} padding: 0.8rem 1.2rem;">
+                <div style="max-width: 70%; ${isSelf ? 'background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;' : 'background: rgba(255, 255, 255, 0.9); color: #333; border-radius: 18px 18px 18px 4px;'} padding: 0.8rem 1.2rem; word-break: break-word;" class="emoji">
                     <p style="margin: 0;">${escapeHTML(data.message)}</p>
-                    <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; ${isSelf ? 'color: rgba(255, 255, 255, 0.8);' : 'color: #999;'}">${new Date(data.created_at || Date.now()).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: false })}</p>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; ${isSelf ? 'color: rgba(255, 255, 255, 0.8);' : 'color: #999;'}">${timeStamp} ${receipt}</p>
                 </div>
             </div>`;
-        if (messagesContainer) {
-            messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
-            scrollToBottom();
-        }
+        messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
+        scrollToBottom();
+        twemoji.parse(messagesContainer);
     };
 
     chatSocket.onclose = function(e) {
@@ -142,60 +141,51 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('WebSocket error:', e);
     };
 
-    if (messageInput && messageForm) {
-        messageInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                messageForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-            }
-        });
-
-        messageForm.addEventListener('submit', function(e) {
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
             e.preventDefault();
-            const message = messageInput.value.trim();
-            if (!message) return;
+            messageForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+    });
 
-            // Send message via WebSocket
-            chatSocket.send(JSON.stringify({
-                'message': message,
-                'sender': currentUsername,
-                'conversation_id': conversationId
-            }));
+    messageForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const message = messageInput.value.trim();
+        if (!message) return;
 
-            messageInput.value = '';
-            messageInput.focus();
-            scrollToBottom();
-        });
+        chatSocket.send(JSON.stringify({
+            'message': message,
+            'sender': currentUsername,
+            'conversation_id': conversationId
+        }));
 
+        messageInput.value = '';
         messageInput.focus();
-    }
+    });
+
+    messageInput.focus();
 });
 </script>
 
 <style>
-    #messageInput:focus {
-        outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    
-    #messagesContainer::-webkit-scrollbar {
-        width: 6px;
-    }
-    
-    #messagesContainer::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 3px;
-    }
-    
-    #messagesContainer::-webkit-scrollbar-thumb {
-        background: rgba(102, 126, 234, 0.3);
-        border-radius: 3px;
-    }
-    
-    #messagesContainer::-webkit-scrollbar-thumb:hover {
-        background: rgba(102, 126, 234, 0.5);
-    }
+#messageInput:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+#messagesContainer::-webkit-scrollbar {
+    width: 6px;
+}
+#messagesContainer::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+#messagesContainer::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 3px;
+}
+#messagesContainer::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
+}
 </style>
-
 {% endblock %}
