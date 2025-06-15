@@ -60,19 +60,11 @@ class ConversationDetailView(LoginRequiredMixin, DetailView):
     context_object_name = 'conversation'
 
     def get_queryset(self):
-        return Conversation.objects.filter(participants=self.request.user)
+        user = self.request.user
+        return Conversation.objects.filter(
+            Q(match__user1=user) | Q(match__user2=user)
+        )
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        conversation = self.get_object()
-
-        # Use correct related name from ChatMessage
-        context['chat_messages'] = conversation.messages.order_by('created_at')
-        
-        other_user = conversation.participants.exclude(id=self.request.user.id).first()
-        context['other_user'] = other_user
-
-        return context
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
