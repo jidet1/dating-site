@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'messaging',
     'whitenoise.runserver_nostatic',
     'channels',
+    'profiles.apps.ProfilesConfig',
 ]
 
 
@@ -155,7 +156,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 # MEDIA_ROOT = BASE_DIR / 'media'
-MEDIA_ROOT = '/app/media'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # Default primary key field type
