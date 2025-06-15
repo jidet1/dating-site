@@ -21,11 +21,18 @@ class DashboardView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         current_user = self.request.user
+
+        # Get users already swiped on
         swiped_users = Swipe.objects.filter(user=current_user).values_list('target_user', flat=True)
+
+        # Get blocked users
         blocked_users = BlockedUser.objects.filter(blocker=current_user).values_list('blocked', flat=True)
+
+        # Get all active profiles excluding current user, swiped, and blocked users
         queryset = Profile.objects.filter(is_active=True).exclude(user=current_user)
         queryset = queryset.exclude(user__in=swiped_users).exclude(user__in=blocked_users)
-        return queryset.order_by('?')[:6]
+
+        return queryset.order_by('?')[:6]  # Randomize and limit to 6 profiles
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -80,14 +87,19 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         profile = context['profile']
+        
+        # Check if users have swiped on each other
         context['has_swiped'] = Swipe.objects.filter(
             user=self.request.user, 
             target_user=profile.user
         ).exists()
+        
+        # Check if blocked
         context['is_blocked'] = BlockedUser.objects.filter(
             blocker=self.request.user,
             blocked=profile.user
         ).exists()
+        
         return context
 
 class DiscoverView(LoginRequiredMixin, ListView):
@@ -98,19 +110,32 @@ class DiscoverView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         current_user = self.request.user
+        
+        # Get user preferences
         try:
             preferences = MatchPreference.objects.get(user=current_user)
         except MatchPreference.DoesNotExist:
             preferences = None
+        
+        # Get users already swiped on
         swiped_users = Swipe.objects.filter(user=current_user).values_list('target_user', flat=True)
+        
+        # Get blocked users
         blocked_users = BlockedUser.objects.filter(blocker=current_user).values_list('blocked', flat=True)
+        
         queryset = Profile.objects.filter(is_active=True).exclude(user=current_user)
+        
+        # Apply preferences
         if preferences:
             queryset = queryset.filter(user__date_of_birth__year__lte=2023 - preferences.min_age)
             queryset = queryset.filter(user__date_of_birth__year__gte=2023 - preferences.max_age)
+            
             if preferences.show_me != 'B':
                 queryset = queryset.filter(gender=preferences.show_me)
+        
+        # Exclude swiped and blocked users
         queryset = queryset.exclude(user__in=swiped_users).exclude(user__in=blocked_users)
+        
         return queryset.order_by('?')
 
 class PhotoUploadView(LoginRequiredMixin, CreateView):
@@ -122,6 +147,7 @@ class PhotoUploadView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         profile = get_object_or_404(Profile, user=self.request.user)
         form.instance.profile = profile
+        # Set as primary if no other primary photo exists
         if not profile.photos.filter(is_primary=True).exists():
             form.instance.is_primary = True
         response = super().form_valid(form)
