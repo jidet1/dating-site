@@ -69,8 +69,10 @@ class ConversationDetailView(LoginRequiredMixin, DetailView):
         conversation, created = Conversation.objects.get_or_create(match=match)
         
         Message.objects.filter(
-            conversation=conversation
-        ).exclude(sender=self.request.user).update(is_read=True)
+            conversation=conversation,
+            recipient=self.request.user,
+            is_read=False
+        ).update(is_read=True)
         
         return conversation
     
