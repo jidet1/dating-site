@@ -10,6 +10,7 @@ from .models import Swipe, Match, MatchPreference
 from .forms import MatchPreferenceForm
 from profiles.models import Profile
 from messaging.models import Conversation
+from django.db.models import Q
 
 User = get_user_model()
 
@@ -104,5 +105,13 @@ class PreferencesView(LoginRequiredMixin, UpdateView):
         response = super().form_valid(form)
         messages.success(self.request, 'Preferences updated successfully!')
         return response
-
-from django.db import models
+    
+class UnmatchView(LoginRequiredMixin, View):
+    def post(self, request, user_id):
+        other_user = get_object_or_404(User, id=user_id)
+        Match.objects.filter(
+            (Q(user1=request.user) & Q(user2=other_user)) |
+            (Q(user1=other_user) & Q(user2=request.user))
+        ).delete()
+        messages.success(request, 'User unmatched successfully!')
+        return redirect('profiles:dashboard')

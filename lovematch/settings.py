@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-&ztto8xk#-qya&uq&mc9x3-*n-2c1+y%n%z4b50ori=0heb)1!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['dating-site-production.up.railway.app', 'https://dating-site-production.up.railway.app']
+ALLOWED_HOSTS = ['dating-site-production.up.railway.app', 'https://dating-site-production.up.railway.app', 'localhost', '127.0.1']
 CSRF_TRUSTED_ORIGINS = ['https://dating-site-production.up.railway.app']
 
 
@@ -96,14 +96,14 @@ CHANNEL_LAYERS = {
 
 DATABASES = {
     'default': {
-        #'ENGINE': 'django.db.backends.sqlite3',
-        #'NAME': BASE_DIR / 'db.sqlite3',
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'railway',
-        'USER': 'postgres',
-        'PASSWORD': os.environ.get('DB_PASSWORD_YO', 'vmkPtrujxRMeiWyCdpHqiGwNAQkTwkzm'),
-        'HOST': 'hopper.proxy.rlwy.net',
-        'PORT': '13419',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+        # 'ENGINE': 'django.db.backends.postgresql',
+        # 'NAME': 'railway',
+        # 'USER': 'postgres',
+        # 'PASSWORD': os.environ.get('DB_PASSWORD_YO', 'vmkPtrujxRMeiWyCdpHqiGwNAQkTwkzm'),
+        # 'HOST': 'hopper.proxy.rlwy.net',
+        # 'PORT': '13419',
     }
 }
 
@@ -154,7 +154,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
-# MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 

@@ -10,6 +10,43 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     {% block extra_css %}{% endblock %}
     <style>
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="file"],
+    select,
+    textarea {
+        background: #fff;
+        border: 2px solid #e0e0e0;
+        border-radius: 25px;
+        padding: 0.8rem 1.2rem;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        width: 100%;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus,
+    input[type="number"]:focus,
+    input[type="file"]:focus,
+    select:focus,
+    textarea:focus {
+        border-color: #667eea;
+        outline: none;
+        background: #f7f8fa;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: auto;
+        margin-right: 0.5rem;
+    }
+    </style>
+    <style>
         * {
             margin: 0;
             padding: 0;

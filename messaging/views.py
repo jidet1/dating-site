@@ -9,7 +9,8 @@ from django.utils.html import escape
 from .models import Conversation, Message
 from matching.models import Match
 from datetime import datetime
-
+from django.shortcuts import redirect
+from .forms import MessageForm
 
 User = get_user_model()
 
@@ -54,6 +55,8 @@ class ConversationListView(LoginRequiredMixin, ListView):
         context['user'] = user
         return context
 
+
+
 class ConversationDetailView(LoginRequiredMixin, DetailView):
     model = Conversation
     template_name = 'messaging/conversation_detail.html'
@@ -65,7 +68,6 @@ class ConversationDetailView(LoginRequiredMixin, DetailView):
             Q(match__user1=user) | Q(match__user2=user)
         )
 
-    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['messages'] = self.object.messages.select_related('sender').all()
@@ -73,15 +75,37 @@ class ConversationDetailView(LoginRequiredMixin, DetailView):
         if hasattr(match, 'get_other_user'):
             context['other_user'] = match.get_other_user(self.request.user)
         else:
-            # Fallback: determine the other user manually
             if self.request.user == match.user1:
                 context['other_user'] = match.user2
             elif self.request.user == match.user2:
                 context['other_user'] = match.user1
             else:
                 raise Http404("Invalid match configuration")
+        context['form'] = MessageForm()
         return context
 
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = MessageForm(request.POST)
+        match = self.object.match
+        if hasattr(match, 'get_other_user'):
+            other_user = match.get_other_user(request.user)
+        else:
+            if request.user == match.user1:
+                other_user = match.user2
+            elif request.user == match.user2:
+                other_user = match.user1
+            else:
+                raise Http404("Invalid match configuration")
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.conversation = self.object
+            message.sender = request.user
+            message.recipient = other_user
+            message.save()
+            return redirect('messaging:conversation_detail', pk=self.object.pk)
+        context = self.get_context_data(form=form)
+        return self.render_to_response(context)
 class SendMessageView(LoginRequiredMixin, View):
     def post(self, request):
         conversation_id = request.POST.get('conversation_id')

@@ -134,7 +134,23 @@
                         <i class="fas fa-check-circle"></i> You've already swiped on this person
                     </div>
                 {% endif %}
-                
+                {% if is_matched %}
+                    {% if not is_blocked %}
+                    <form method="post" action="{% url 'profiles:block_user' profile.user.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Block</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{% url 'profiles:unblock_user' profile.user.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-warning">Unblock</button>
+                    </form>
+                    {% endif %}
+                    <form method="post" action="{% url 'matching:unmatch_user' profile.user.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-secondary">Unmatch</button>
+                    </form>
+                {% endif %}
                 <button onclick="showReportModal()" class="btn" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; padding: 1rem 2rem; border: 2px solid rgba(239, 68, 68, 0.2);">
                     <i class="fas fa-flag"></i> Report
                 </button>
@@ -221,7 +237,7 @@ function passUser(userId) {
         },
     })
     .then(response => response.json())
-    .then(data => {
+    .then data => {
         window.location.href = '/profiles/discover/';
     });
 }

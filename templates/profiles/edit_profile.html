@@ -95,6 +95,15 @@
                         </form>
                     </div>
                     {% endfor %}
+                    {% for photo in profile.photos.all %}
+                        <div>
+                            <img src="{{ photo.image.url }}" alt="Profile Photo" style="width:100px;">
+                            <form method="post" action="{% url 'profiles:photo_delete' photo.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
             {% endif %}

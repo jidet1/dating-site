@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
+import os  
 
 User = get_user_model()
 
@@ -73,6 +74,12 @@ class ProfilePhoto(models.Model):
         if not self.pk and not ProfilePhoto.objects.filter(profile=self.profile, is_primary=True).exists():
             self.is_primary = True
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Delete the image file from storage
+        if self.image and os.path.isfile(self.image.path):
+            os.remove(self.image.path)
+        super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"{self.profile.user.first_name}'s Photo"

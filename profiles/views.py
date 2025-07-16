@@ -68,7 +68,8 @@ class EditProfileView(LoginRequiredMixin, UpdateView):
     success_url = reverse_lazy('profiles:dashboard')
     
     def get_object(self):
-        return get_object_or_404(Profile, user=self.request.user)
+        profile, created = Profile.objects.get_or_create(user=self.request.user)
+        return profile
     
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -87,19 +88,28 @@ class ProfileDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         profile = context['profile']
-        
+        user = self.request.user
+
         # Check if users have swiped on each other
         context['has_swiped'] = Swipe.objects.filter(
-            user=self.request.user, 
+            user=user, 
             target_user=profile.user
         ).exists()
-        
+
         # Check if blocked
         context['is_blocked'] = BlockedUser.objects.filter(
-            blocker=self.request.user,
+            blocker=user,
             blocked=profile.user
         ).exists()
-        
+
+        # Check if matched
+        from matching.models import Match
+        context['is_matched'] = Match.objects.filter(
+            (Q(user1=user) & Q(user2=profile.user)) |
+            (Q(user1=profile.user) & Q(user2=user)),
+            is_active=True
+        ).exists()
+
         return context
 
 class DiscoverView(LoginRequiredMixin, ListView):
@@ -161,15 +171,20 @@ class PhotoDeleteView(LoginRequiredMixin, View):
         messages.success(request, 'Photo deleted successfully!')
         return redirect('profiles:dashboard')
 
+
 class BlockUserView(LoginRequiredMixin, View):
     def post(self, request, user_id):
         user_to_block = get_object_or_404(User, id=user_id)
-        BlockedUser.objects.get_or_create(
-            blocker=request.user,
-            blocked=user_to_block
-        )
+        BlockedUser.objects.get_or_create(blocker=request.user, blocked=user_to_block)
         messages.success(request, 'User blocked successfully!')
-        return redirect('profiles:discover')
+        return redirect('profiles:profile_detail', user_id=user_id)
+
+class UnblockUserView(LoginRequiredMixin, View):
+    def post(self, request, user_id):
+        user_to_unblock = get_object_or_404(User, id=user_id)
+        BlockedUser.objects.filter(blocker=request.user, blocked=user_to_unblock).delete()
+        messages.success(request, 'User unblocked successfully!')
+        return redirect('profiles:profile_detail', user_id=user_id)
 
 class ReportUserView(LoginRequiredMixin, CreateView):
     model = ReportUser

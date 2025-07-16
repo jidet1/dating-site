@@ -12,7 +12,7 @@
                 <i class="fas fa-arrow-left"></i>
             </a>
             {% if other_user.profile.get_primary_photo %}
-                <img src="{{ other_user.profile.get_primary_photo.url }}" alt="{{ other_user.profile.full_name }}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                <img src="{{ other_user.profile.get_primary_photo }}" alt="{{ other_user.profile.full_name }}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
             {% else %}
                 <img src="{% static 'images/default_profile.jpg' %}" alt="Default" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
             {% endif %}
@@ -29,7 +29,7 @@
     <!-- Messages Container -->
     <div class="card" style="flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
         <div id="messagesContainer" style="flex: 1; overflow-y: auto; padding: 1rem; background: linear-gradient(135deg, rgba(102,126,234,0.02), rgba(118,75,162,0.02));">
-            {% for message in chat_messages %}
+            {% for message in messages %}
                 <div style="margin-bottom: 1rem; display: flex; justify-content: {% if message.sender == user %}flex-end{% else %}flex-start{% endif %};">
                     <div style="max-width: 70%; padding: 0.8rem 1.2rem; word-break: break-word; {% if message.sender == user %}background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;{% else %}background: rgba(255,255,255,0.9); color: #333; border-radius: 18px 18px 18px 4px;{% endif %}" class="emoji">
                         <p style="margin: 0;">{{ message.content|escape }}</p>
@@ -54,12 +54,12 @@
 
         <!-- Input -->
         <div style="border-top: 1px solid rgba(255,255,255,0.2); padding: 1rem; background: rgba(255,255,255,0.05); backdrop-filter: blur(10px);">
-            <form id="messageForm" action="javascript:void(0);" style="display: flex; gap: 1rem;">
+            <form id="messageForm" method="post" action="" style="display: flex; gap: 1rem;">
                 {% csrf_token %}
-                <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
                 <input type="text" name="content" id="messageInput" placeholder="Type your message and use 😊 emojis..." 
                        style="flex: 1; padding: 0.8rem 1.2rem; border: 2px solid rgba(255,255,255,0.3); border-radius: 25px; background: rgba(255,255,255,0.9); font-size: 16px;" 
                        required>
+                <button type="button" id="emoji-btn" style="border-radius: 50%; width: 50px; height: 50px; background: #fff; border: 2px solid #e0e0e0; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; z-index: 9999; position: relative;">😊</button>
                 <button type="submit" class="btn btn-primary" style="border-radius: 50%; width: 50px; height: 50px;">
                     <i class="fas fa-paper-plane"></i>
                 </button>
@@ -68,74 +68,32 @@
     </div>
 </div>
 
-<script src="https://twemoji.maxcdn.com/v/latest/twemoji.min.js" crossorigin="anonymous"></script>
+<!-- Emoji Button library and custom script at the end of the template -->
+<script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.4/dist/emoji-button.min.js"></script>
 <script>
-function scrollToBottom() {
-    const container = document.getElementById('messagesContainer');
-    if (container) container.scrollTop = container.scrollHeight;
-}
-
-function escapeHTML(str) {
-    return ('' + str).replace(/[&<>"'`=\/]/g, s => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
-        "'": '&#39;', '`': '&#x60;', '=': '&#x3D;', '/': '&#x2F;'
-    })[s]);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    scrollToBottom();
-    twemoji.parse(document.body);
-
-    const socketUrl = (window.location.protocol === 'https:' ? 'wss' : 'ws') + '://' + window.location.host + '/ws/chat/{{ other_user.username|escapejs }}/';
-    const chatSocket = new WebSocket(socketUrl);
-
-    const messageInput = document.getElementById('messageInput');
-    const messagesContainer = document.getElementById('messagesContainer');
-    const currentUsername = "{{ request.user.username|escapejs }}";
-    const conversationId = "{{ conversation.id|escapejs }}";
-
-    chatSocket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        const isSelf = data.sender === currentUsername;
-        const timeStamp = new Date(data.created_at || Date.now()).toLocaleString('en-US', {
-            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
+document.addEventListener('DOMContentLoaded', function() {
+    const button = document.querySelector('#emoji-btn');
+    const input = document.querySelector('#messageInput');
+    if (typeof EmojiButton !== 'undefined') {
+        const picker = new EmojiButton({
+            position: 'top-end',
+            zIndex: 9999
         });
-        const status = isSelf ? (data.is_read ? '&#10004;&#10004;' : '&#10004;') : '';
-
-        const messageHTML = `
-            <div style="margin-bottom: 1rem; display: flex; justify-content: ${isSelf ? 'flex-end' : 'flex-start'};">
-                <div style="max-width: 70%; padding: 0.8rem 1.2rem; ${isSelf ? 'background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 18px 18px 4px 18px;' : 'background: rgba(255,255,255,0.9); color: #333; border-radius: 18px 18px 18px 4px;'}" class="emoji">
-                    <p style="margin: 0;">${escapeHTML(data.message)}</p>
-                    <p style="margin: 0.5rem 0 0; font-size: 0.7rem; ${isSelf ? 'color: rgba(255,255,255,0.8);' : 'color: #999;'}">${timeStamp} <span>${status}</span></p>
-                </div>
-            </div>`;
-        messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
-        scrollToBottom();
-        twemoji.parse(messagesContainer);
-    };
-
-    chatSocket.onclose = () => console.error('WebSocket closed unexpectedly');
-    chatSocket.onerror = e => console.error('WebSocket error:', e);
-
-    document.getElementById('messageForm').addEventListener('submit', e => {
-        e.preventDefault();
-        const message = messageInput.value.trim();
-        if (!message) return;
-        chatSocket.send(JSON.stringify({
-            message: message,
-            sender: currentUsername,
-            conversation_id: conversationId
-        }));
-        messageInput.value = '';
-        messageInput.focus();
-    });
-
-    messageInput.addEventListener('keypress', e => {
-        if (e.key === 'Enter') {
+        picker.on('emoji', emoji => {
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
+            input.focus();
+            input.selectionStart = input.selectionEnd = start + emoji.length;
+        });
+        button.addEventListener('click', function(e) {
             e.preventDefault();
-            document.getElementById('messageForm').dispatchEvent(new Event('submit', { bubbles: true }));
-        }
-    });
+            picker.togglePicker(button);
+        });
+    } else {
+        button.disabled = true;
+        button.title = 'Emoji picker failed to load';
+    }
 });
 </script>
 
@@ -155,5 +113,99 @@ document.addEventListener('DOMContentLoaded', () => {
 #messagesContainer::-webkit-scrollbar-thumb:hover {
     background: rgba(102,126,234,0.5);
 }
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-primary i {
+    font-size: 1.2rem;
+}
 </style>
 {% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('messageForm');
+    const messageInput = document.getElementById('messageInput');
+
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const content = messageInput.value.trim();
+        if (content) {
+            form.submit();
+        }
+    });
+
+    // Auto-scroll to the bottom of the messages container
+    const messagesContainer = document.getElementById('messagesContainer');
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+});
+</script>
+{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/messaging.css' %}">
+{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/fontawesome.css' %}">
+{% endblock %}
+{% block extra_scripts %}
+<script src="{% static 'js/fontawesome.js' %}"></script>
+{% endblock %}
+
+{% block extra_css %}
+<style> 
+#messageForm {
+    display: flex;
+    gap: 1rem;
+}
+#messageInput {
+    flex: 1;
+    padding: 0.8rem 1.2rem;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 25px;
+    background: rgba(255,255,255,0.9);
+    font-size: 16px;
+}
+#messageInput:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.btn-primary {
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-primary i {
+    font-size: 1.2rem;
+}
+#messagesContainer {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(102,126,234,0.02), rgba(118,75,162,0.02));
+}
+#messagesContainer::-webkit-scrollbar {
+    width: 6px;
+}
+#messagesContainer::-webkit-scrollbar-thumb {
+    background: rgba(102,126,234,0.3);
+    border-radius: 3px;
+}
+#messagesContainer::-webkit-scrollbar-thumb:hover {
+    background: rgba(102,126,234,0.5);
+}
+</style>
+{% endblock %}
+
